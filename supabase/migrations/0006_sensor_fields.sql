@@ -1,0 +1,1 @@
+-- 0006_sensor_fields.sql  –  (no additional columns; GSM/battery removed)
