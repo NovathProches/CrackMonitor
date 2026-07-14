@@ -12,21 +12,7 @@ import { Loader2, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMapDetections, type MapDetection } from '@/hooks/useMapDetections'
 
-// ── severity color maps ───────────────────────────────────────────────────────
-
-const SEVERITY_COLOR: Record<string, string> = {
-  critical: '#ef4444',
-  high: '#f97316',
-  medium: '#f59e0b',
-  low: '#10b981',
-}
-
-const SEVERITY_CHIP: Record<string, string> = {
-  critical: 'bg-red-100 text-red-800',
-  high: 'bg-orange-100 text-orange-800',
-  medium: 'bg-amber-100 text-amber-800',
-  low: 'bg-emerald-100 text-emerald-800',
-}
+const MARKER_COLOR = '#7F77DD'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -116,19 +102,7 @@ function DetectionListItem({
       )}
     >
       <div className="flex items-center justify-between">
-        {d.severity ? (
-          <span
-            className={cn(
-              'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-              SEVERITY_CHIP[d.severity] ?? 'bg-slate-100 text-slate-700',
-            )}
-          >
-            {d.severity}
-          </span>
-        ) : (
-          <span />
-        )}
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground">
           {fmtTimeAgo(d.captured_at)}
         </span>
       </div>
@@ -147,39 +121,10 @@ function DetectionListItem({
   )
 }
 
-// ── legend ────────────────────────────────────────────────────────────────────
-
-function Legend() {
-  const entries: { label: string; color: string }[] = [
-    { label: 'Critical', color: SEVERITY_COLOR.critical },
-    { label: 'High', color: SEVERITY_COLOR.high },
-    { label: 'Medium', color: SEVERITY_COLOR.medium },
-    { label: 'Low', color: SEVERITY_COLOR.low },
-  ]
-
-  return (
-    <div className="absolute bottom-8 left-3 z-[1000] rounded-xl border bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur-sm">
-      <p className="mb-1.5 text-xs font-medium text-muted-foreground">Severity</p>
-      <div className="flex flex-col gap-1">
-        {entries.map(e => (
-          <div key={e.label} className="flex items-center gap-2">
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: e.color }}
-            />
-            <span className="text-xs">{e.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── page ──────────────────────────────────────────────────────────────────────
 
 export default function Map() {
-  const { detections, loading, error, severityFilter, setSeverityFilter } =
-    useMapDetections()
+  const { detections, loading, error } = useMapDetections()
   const [selected, setSelected] = useState<MapDetection | null>(null)
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
@@ -201,28 +146,8 @@ export default function Map() {
         <div className="border-b px-4 py-3">
           <p className="font-semibold">Detections</p>
           <p className="text-xs text-muted-foreground">
-            {loading
-              ? 'Loading…'
-              : `${detections.length} with GPS${severityFilter ? ` · ${severityFilter}` : ''}`}
+            {loading ? 'Loading…' : `${detections.length} with GPS`}
           </p>
-        </div>
-
-        {/* Severity filter */}
-        <div className="border-b px-4 py-2">
-          <select
-            value={severityFilter}
-            onChange={e => {
-              setSeverityFilter(e.target.value)
-              setSelected(null)
-            }}
-            className="h-8 w-full rounded-md border bg-background px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">All severities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
         </div>
 
         {/* Detection list */}
@@ -234,7 +159,6 @@ export default function Map() {
               <MapPin className="h-6 w-6 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
                 No detections with GPS data
-                {severityFilter ? ` for "${severityFilter}"` : ''}
               </p>
             </div>
           ) : (
@@ -272,7 +196,6 @@ export default function Map() {
 
           {detections.map(det => {
             const isSelected = selected?.id === det.id
-            const color = SEVERITY_COLOR[det.severity ?? ''] ?? '#94a3b8'
             const ticket =
               det.tickets?.find(t => t.status !== 'resolved') ??
               det.tickets?.[0] ??
@@ -284,7 +207,7 @@ export default function Map() {
                 center={[det.lat, det.lng]}
                 radius={isSelected ? 11 : 7}
                 pathOptions={{
-                  fillColor: color,
+                  fillColor: MARKER_COLOR,
                   fillOpacity: isSelected ? 1 : 0.8,
                   color: isSelected ? '#fff' : 'rgba(255,255,255,0.5)',
                   weight: isSelected ? 2.5 : 1.5,
@@ -301,21 +224,6 @@ export default function Map() {
                         marginBottom: 6,
                       }}
                     >
-                      {det.severity && (
-                        <span
-                          style={{
-                            background: color + '22',
-                            color,
-                            padding: '1px 8px',
-                            borderRadius: 999,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                          }}
-                        >
-                          {det.severity}
-                        </span>
-                      )}
                       <span style={{ fontSize: 11, color: '#64748b' }}>
                         {fmtTimeAgo(det.captured_at)}
                       </span>
@@ -352,9 +260,6 @@ export default function Map() {
             )
           })}
         </MapContainer>
-
-        {/* Legend */}
-        <Legend />
 
         {/* Loading overlay */}
         {loading && (

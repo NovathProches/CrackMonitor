@@ -1,40 +1,48 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/lib/auth'
+import { api, setToken } from '@/lib/api'
+import { useAuth, type AuthUser } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export default function Login() {
-  const { session } = useAuth()
+  const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (session) return <Navigate to="/overview" replace />
+  if (user) return <Navigate to="/overview" replace />
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
-    setLoading(false)
+    try {
+      const data = await api.post<{ token: string; user: AuthUser }>(
+        '/api/auth/login/',
+        { email, password },
+      )
+      setToken(data.token)
+      const setter = (window as unknown as Record<string, unknown>).__cmSetAuth
+      if (typeof setter === 'function') setter(data.token, data.user)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Login failed')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-8">
-        {/* Brand */}
         <div className="flex flex-col items-center gap-4">
           <img src="/crackmonitor-icon.svg" alt="CrackMonitor" className="h-[72px] w-[72px]" />
           <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">

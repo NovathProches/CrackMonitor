@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+<g>
+  <defs>
+    <clipPath id="railR"><rect x="72" y="14" width="10" height="92" rx="4"/></clipPath>
+  </defs>
+  <rect width="120" height="120" rx="27" fill="#0F1D30"/>
+  <g fill="#54637C">
+    <rect x="24" y="22" width="72" height="9" rx="3"/>
+    <rect x="24" y="47" width="72" height="9" rx="3"/>
+    <rect x="24" y="72" width="72" height="9" rx="3"/>
+    <rect x="24" y="97" width="72" height="9" rx="3"/>
+  </g>
+  <rect x="38" y="14" width="10" height="92" rx="4" fill="#E8EDF4"/>
+  <rect x="72" y="14" width="10" height="92" rx="4" fill="#E8EDF4"/>
+  <path d="M63 55 L72 60 L68 66 L78 70 L74 76 L87 81" fill="none" stroke="#0F1D30" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" clip-path="url(#railR)"/>
+  <path d="M63 55 L72 60 L68 66 L78 70 L74 76 L87 81" fill="none" stroke="#DC2626" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="77" cy="68" r="18" fill="none" stroke="#DC2626" stroke-width="3.5" stroke-dasharray="6 5" opacity="0.85"/>
+</g>
+</svg>

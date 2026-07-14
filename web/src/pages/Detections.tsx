@@ -18,17 +18,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
 import { useDetections, PAGE_SIZE, type DetectionRow, type DetectionTicket, type Engineer } from '@/hooks/useDetections'
 
 // ── color maps ────────────────────────────────────────────────────────────────
-
-const severityClass: Record<string, string> = {
-  critical: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-  high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-  medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-  low: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-}
 
 const detStatusClass: Record<string, string> = {
   unreviewed: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -152,30 +144,14 @@ function DetectionDrawer({
   onCreateTicket: (detectionId: string, assigneeId: string) => Promise<void>
   onMarkFixed: (ticketNumber: number) => Promise<unknown>
 }) {
-  const [overlayUrl, setOverlayUrl] = useState<string | null>(null)
-  const [imgLoading, setImgLoading] = useState(false)
+  const overlayUrl = detection?.overlay_url ?? null
+  const imgLoading = false
   const [imgReady, setImgReady] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [creating, setCreating] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!detection?.overlay_path) {
-      setOverlayUrl(null)
-      setImgLoading(false)
-      return
-    }
-    setImgLoading(true)
-    setImgReady(false)
-    setOverlayUrl(null)
-    supabase.storage
-      .from('detections')
-      .createSignedUrl(detection.overlay_path, 3600)
-      .then(({ data }) => {
-        setOverlayUrl(data?.signedUrl ?? null)
-        setImgLoading(false)
-      })
-  }, [detection?.id, detection?.overlay_path])
+  useEffect(() => { setImgReady(false) }, [overlayUrl])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -216,7 +192,7 @@ function DetectionDrawer({
         className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-[480px] flex-col border-l bg-background shadow-xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l bg-background shadow-xl sm:w-[480px]">
         {/* Header */}
         <div className="flex items-start justify-between border-b px-6 py-4">
           <div>
@@ -267,9 +243,6 @@ function DetectionDrawer({
 
           {/* Status chips */}
           <div className="flex items-center gap-2">
-            {detection.severity && (
-              <Chip label={detection.severity} map={severityClass} />
-            )}
             <Chip label={detection.status} map={detStatusClass} />
           </div>
 
@@ -310,11 +283,6 @@ function DetectionDrawer({
             <p className="font-mono text-sm">
               {fmtCoords(detection.lat, detection.lng)}
             </p>
-            {detection.gps_accuracy_m != null && (
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                ±{detection.gps_accuracy_m.toFixed(1)} m accuracy
-              </p>
-            )}
           </div>
 
           {/* Ticket */}
@@ -408,7 +376,7 @@ function SkeletonRows() {
     <>
       {Array.from({ length: 10 }).map((_, i) => (
         <TableRow key={i}>
-          {Array.from({ length: 7 }).map((_, j) => (
+          {Array.from({ length: 6 }).map((_, j) => (
             <TableCell key={j}>
               <Skeleton className="h-4 w-full" />
             </TableCell>
@@ -427,8 +395,6 @@ export default function Detections() {
     total,
     page,
     setPage,
-    severityFilter,
-    setSeverityFilter,
     statusFilter,
     setStatusFilter,
     loading,
@@ -441,7 +407,7 @@ export default function Detections() {
   const [selected, setSelected] = useState<DetectionRow | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const hasFilters = !!severityFilter || !!statusFilter
+  const hasFilters = !!statusFilter
 
   return (
     <>
@@ -458,20 +424,6 @@ export default function Detections() {
 
         {/* Filters */}
         <div className="flex items-center gap-4">
-          <FilterSelect
-            label="Severity"
-            value={severityFilter}
-            onChange={v => {
-              setSeverityFilter(v)
-              setPage(0)
-            }}
-            options={[
-              { value: 'critical', label: 'Critical' },
-              { value: 'high', label: 'High' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'low', label: 'Low' },
-            ]}
-          />
           <FilterSelect
             label="Status"
             value={statusFilter}
@@ -490,7 +442,6 @@ export default function Detections() {
             <button
               type="button"
               onClick={() => {
-                setSeverityFilter('')
                 setStatusFilter('')
                 setPage(0)
               }}
@@ -509,12 +460,12 @@ export default function Detections() {
 
         {/* Table */}
         <Card>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Detected</TableHead>
                 <TableHead>Location</TableHead>
-                <TableHead>Severity</TableHead>
                 <TableHead>Length</TableHead>
                 <TableHead>Width</TableHead>
                 <TableHead>Status</TableHead>
@@ -527,7 +478,7 @@ export default function Detections() {
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={6}
                     className="py-12 text-center text-sm text-muted-foreground"
                   >
                     No detections found
@@ -553,13 +504,6 @@ export default function Detections() {
                         <span className="font-mono text-xs">
                           {fmtCoords(row.lat, row.lng)}
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        {row.severity ? (
-                          <Chip label={row.severity} map={severityClass} />
-                        ) : (
-                          '—'
-                        )}
                       </TableCell>
                       <TableCell className="tabular-nums">
                         {mm(row.crack_length_mm)}
@@ -588,6 +532,7 @@ export default function Detections() {
               )}
             </TableBody>
           </Table>
+          </div>
         </Card>
 
         {/* Pagination */}

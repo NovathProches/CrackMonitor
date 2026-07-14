@@ -18,7 +18,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { supabase } from '@/lib/supabase'
 import {
   useMaintenance,
   PAGE_SIZE,
@@ -27,13 +26,6 @@ import {
 } from '@/hooks/useMaintenance'
 
 // ── color maps ────────────────────────────────────────────────────────────────
-
-const severityClass: Record<string, string> = {
-  critical: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-  high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-  medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
-  low: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-}
 
 const ticketStatusClass: Record<string, string> = {
   open: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -227,31 +219,14 @@ function TicketDrawer({
   onUpdateStatus: (ticketNumber: number, status: string) => Promise<void>
   onReassign: (ticketNumber: number, assigneeId: string | null) => Promise<void>
 }) {
-  const [overlayUrl, setOverlayUrl] = useState<string | null>(null)
-  const [imgLoading, setImgLoading] = useState(false)
+  const overlayUrl = ticket?.detection?.overlay_url ?? null
+  const imgLoading = false
   const [imgReady, setImgReady] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [actionBusy, setActionBusy] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const path = ticket?.detection?.overlay_path
-    if (!path) {
-      setOverlayUrl(null)
-      setImgLoading(false)
-      return
-    }
-    setImgLoading(true)
-    setImgReady(false)
-    setOverlayUrl(null)
-    supabase.storage
-      .from('detections')
-      .createSignedUrl(path, 3600)
-      .then(({ data }) => {
-        setOverlayUrl(data?.signedUrl ?? null)
-        setImgLoading(false)
-      })
-  }, [ticket?.ticket_number, ticket?.detection?.overlay_path])
+  useEffect(() => { setImgReady(false) }, [overlayUrl])
 
   useEffect(() => {
     setActionError(null)
@@ -302,7 +277,7 @@ function TicketDrawer({
         className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-[500px] flex-col border-l bg-background shadow-xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l bg-background shadow-xl sm:w-[500px]">
         {/* Header */}
         <div className="flex items-start justify-between border-b px-6 py-4">
           <div>
@@ -368,7 +343,6 @@ function TicketDrawer({
               </p>
               <div className="space-y-2 rounded-lg bg-muted/40 p-3">
                 <div className="flex items-center gap-2">
-                  {det.severity && <Chip label={det.severity} map={severityClass} />}
                   <span className="font-mono text-xs text-muted-foreground">
                     {fmtCoords(det.lat, det.lng)}
                   </span>
@@ -512,7 +486,7 @@ function SkeletonRows() {
     <>
       {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={i}>
-          {Array.from({ length: 6 }).map((_, j) => (
+          {Array.from({ length: 5 }).map((_, j) => (
             <TableCell key={j}>
               <Skeleton className="h-4 w-full" />
             </TableCell>
@@ -563,7 +537,7 @@ export default function Maintenance() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           <StatCard
             label="Open"
             value={counts.open}
@@ -631,12 +605,12 @@ export default function Maintenance() {
 
         {/* Table */}
         <Card>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Ticket</TableHead>
                 <TableHead>Location</TableHead>
-                <TableHead>Severity</TableHead>
                 <TableHead>Crack size</TableHead>
                 <TableHead>Assigned to</TableHead>
                 <TableHead>Status</TableHead>
@@ -648,7 +622,7 @@ export default function Maintenance() {
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={5}
                     className="py-12 text-center text-sm text-muted-foreground"
                   >
                     No tickets found{hasFilters ? ' matching these filters' : ''}.
@@ -673,11 +647,6 @@ export default function Maintenance() {
                       <span className="font-mono text-xs">
                         {fmtCoords(row.detection?.lat ?? null, row.detection?.lng ?? null)}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      {row.detection?.severity ? (
-                        <Chip label={row.detection.severity} map={severityClass} />
-                      ) : '—'}
                     </TableCell>
                     <TableCell className="tabular-nums text-sm">
                       {row.detection
@@ -722,6 +691,7 @@ export default function Maintenance() {
               )}
             </TableBody>
           </Table>
+          </div>
         </Card>
 
         {/* Pagination */}

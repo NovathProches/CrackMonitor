@@ -110,6 +110,7 @@ function StatCard({
 
 function LatestDetectionCard({
   detection,
+  rawImageUrl,
   overlayUrl,
   imageLoading,
   engineers,
@@ -117,20 +118,22 @@ function LatestDetectionCard({
   onMarkFixed,
 }: {
   detection: LatestDetection
+  rawImageUrl: string | null
   overlayUrl: string | null
   imageLoading: boolean
   engineers: Engineer[]
   onCreateTicket: (assigneeId: string) => Promise<void>
   onMarkFixed: () => void
 }) {
-  const [imgReady, setImgReady] = useState(false)
+  const [overlayReady, setOverlayReady] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+
+  useEffect(() => { setOverlayReady(false) }, [overlayUrl])
   const [creating, setCreating] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
   const ticket = detection.tickets?.[0] ?? null
   const engineer = ticket?.assignee ?? null
-  const src = detection.measurement_source === 'manual' ? 'Manually measured' : 'Auto-measured'
-  const showSpinner = imageLoading || (!!overlayUrl && !imgReady)
+  const overlaySpinner = imageLoading || (!!overlayUrl && !overlayReady)
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -165,39 +168,65 @@ function LatestDetectionCard({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-5">
-        {/* Annotated overlay image */}
-        <div className="relative overflow-hidden rounded-lg bg-muted/40" style={{ minHeight: '12rem' }}>
-          {showSpinner && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/40 backdrop-blur-sm">
-              <Loader2 className="h-7 w-7 animate-spin text-white" />
-              <span className="text-xs font-medium text-white">Analysing image…</span>
-            </div>
-          )}
-
-          {overlayUrl ? (
-            <img
-              key={overlayUrl}
-              src={overlayUrl}
-              alt="Crack overlay"
-              onLoad={() => setImgReady(true)}
-              className={cn(
-                'w-full object-contain transition-opacity duration-300',
-                imgReady ? 'opacity-100' : 'opacity-0',
+        {/* Dual image panel: captured (instant) + resolved (with spinner) */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Captured image — shown as soon as URL is ready */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Captured</p>
+            <div className="relative overflow-hidden rounded-lg bg-muted/40 min-h-44">
+              {imageLoading ? (
+                <Skeleton className="h-44 w-full" />
+              ) : rawImageUrl ? (
+                <img
+                  key={rawImageUrl}
+                  src={rawImageUrl}
+                  alt="Captured image"
+                  className="w-full object-contain"
+                />
+              ) : (
+                <div className="flex h-44 flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <ImageOff className="h-6 w-6 opacity-40" />
+                  <span className="text-xs">No image</span>
+                </div>
               )}
-            />
-          ) : !imageLoading ? (
-            <div className="flex h-48 flex-col items-center justify-center gap-2 text-muted-foreground">
-              <ImageOff className="h-7 w-7 opacity-40" />
-              <span className="text-xs">No image available</span>
             </div>
-          ) : null}
+          </div>
+
+          {/* Resolved image — spinner while analysing */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Analysis</p>
+            <div className="relative overflow-hidden rounded-lg bg-muted/40 min-h-44">
+              {overlaySpinner && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-sm rounded-lg">
+                  <Loader2 className="h-7 w-7 animate-spin text-white" />
+                  <span className="text-xs font-medium text-white">Analysing…</span>
+                </div>
+              )}
+              {overlayUrl ? (
+                <img
+                  key={overlayUrl}
+                  src={overlayUrl}
+                  alt="Crack analysis"
+                  onLoad={() => setOverlayReady(true)}
+                  className={cn(
+                    'w-full object-contain transition-opacity duration-300',
+                    overlayReady ? 'opacity-100' : 'opacity-0',
+                  )}
+                />
+              ) : !imageLoading ? (
+                <div className="flex h-44 flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <ImageOff className="h-6 w-6 opacity-40" />
+                  <span className="text-xs">No analysis</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         {/* Measurement summary */}
         <div>
           <p className="text-xs text-muted-foreground">Crack width</p>
           <p className="mt-0.5 text-2xl font-bold tabular-nums">{mm(detection.crack_width_mm)}</p>
-          <p className="text-xs text-muted-foreground">{src}</p>
         </div>
 
         {/* Detail grid */}
@@ -402,7 +431,7 @@ function MaintenanceQueue({
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function Overview() {
-  const { stats, latest, recent, queue, engineers, loading, imageLoading, overlayUrl, error, createTicket, markFixed } = useDashboard()
+  const { stats, latest, recent, queue, engineers, loading, imageLoading, rawImageUrl, overlayUrl, error, createTicket, markFixed } = useDashboard()
 
   return (
     <div className="space-y-5">
@@ -413,7 +442,7 @@ export default function Overview() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <StatCard
           label="Total cracks detected"
           value={stats?.totalDetections}
@@ -440,31 +469,22 @@ export default function Overview() {
         />
       </div>
 
-      {/* Latest detection + recent list */}
+      {/* Latest detection — full width */}
       {loading ? (
-        <div className="grid gap-4 lg:grid-cols-5">
-          <div className="lg:col-span-3"><Skeleton className="h-72 w-full" /></div>
-          <div className="lg:col-span-2"><Skeleton className="h-72 w-full" /></div>
-        </div>
+        <Skeleton className="h-72 w-full" />
       ) : latest ? (
-        <div className="grid gap-4 lg:grid-cols-5">
-          <div className="lg:col-span-3">
-            <LatestDetectionCard
-              detection={latest}
-              overlayUrl={overlayUrl}
-              imageLoading={imageLoading}
-              engineers={engineers}
-              onCreateTicket={(assigneeId) => createTicket(latest.id, assigneeId)}
-              onMarkFixed={() => {
-                const t = latest.tickets?.[0]
-                if (t) markFixed(t.ticket_number)
-              }}
-            />
-          </div>
-          <div className="lg:col-span-2">
-            <RecentDetectionsList detections={recent} />
-          </div>
-        </div>
+        <LatestDetectionCard
+          detection={latest}
+          rawImageUrl={rawImageUrl}
+          overlayUrl={overlayUrl}
+          imageLoading={imageLoading}
+          engineers={engineers}
+          onCreateTicket={(assigneeId) => createTicket(latest.id, assigneeId)}
+          onMarkFixed={() => {
+            const t = latest.tickets?.[0]
+            if (t) markFixed(t.ticket_number)
+          }}
+        />
       ) : (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
@@ -473,6 +493,11 @@ export default function Overview() {
             <p className="text-xs text-muted-foreground">Deploy a device to start capturing crack data.</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Recent detections — below the image viewer */}
+      {!loading && recent.length > 0 && (
+        <RecentDetectionsList detections={recent} />
       )}
 
       {/* Maintenance queue */}

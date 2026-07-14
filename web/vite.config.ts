@@ -12,4 +12,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  base: '/static/',
+  build: {
+    outDir: path.resolve(__dirname, '../backend/react_build'),
+    emptyOutDir: true,
+  },
 })

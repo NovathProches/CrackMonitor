@@ -11,7 +11,7 @@ import Reports from '@/pages/Reports'
 import Settings from '@/pages/Settings'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth()
+  const { user, loading } = useAuth()
 
   if (loading) {
     return (
@@ -21,7 +21,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!session) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 

@@ -1,4 +1,4 @@
-import { Bell, Sun, Moon } from 'lucide-react'
+import { Bell, Menu, Moon, Sun } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { useTheme } from '@/lib/theme-context'
 
@@ -11,14 +11,24 @@ const routeTitles: Record<string, string> = {
   '/settings': 'Settings',
 }
 
-export default function TopBar() {
+export default function TopBar({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
   const { pathname } = useLocation()
   const title = routeTitles[pathname] ?? 'CrackMonitor'
   const { theme, toggleTheme } = useTheme()
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-6">
-      <h1 className="text-xl font-semibold">{title}</h1>
+    <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onMobileMenuOpen}
+          className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:hidden"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <h1 className="text-xl font-semibold">{title}</h1>
+      </div>
       <div className="flex items-center gap-1">
         <button
           type="button"
