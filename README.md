@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Crack Monitor
 
 Railway crack detection web platform.
@@ -81,3 +82,6 @@ API docs auto-generated at `http://localhost:8000/docs`.
 cd web
 npx shadcn-ui@latest add button card table ...
 ```
+=======
+# CrackMonitor
+>>>>>>> 92db56f6ff2aae05bf00a76d6af854b0ddc94bbd
